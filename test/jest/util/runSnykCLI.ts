@@ -1,5 +1,10 @@
 import * as path from 'path';
-import { runCommand, RunCommandResult, RunCommandOptions } from './runCommand';
+import {
+  runCommand,
+  runCommandsWithUserInputs,
+  RunCommandResult,
+  RunCommandOptions,
+} from './runCommand';
 
 const cwd = process.cwd();
 
@@ -12,4 +17,14 @@ const runSnykCLI = async (
   return await runCommand('node', [cliPath, ...args], options);
 };
 
-export { runSnykCLI };
+const runSnykCLIWithUserInputs = (
+  argsString: string,
+  inputs: string[],
+  options?: RunCommandOptions,
+): Promise<any> => {
+  const cliPath = path.resolve(cwd, './bin/snyk');
+  const args = argsString.split(' ').filter((v) => !!v);
+  return runCommandsWithUserInputs('node', [cliPath, ...args], inputs, options);
+};
+
+export { runSnykCLI, runSnykCLIWithUserInputs };
