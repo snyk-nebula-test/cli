@@ -6,6 +6,7 @@ import { computeCustomRulesBundleChecksum } from './file-utils';
 export function addIacAnalytics(
   formattedResults: FormattedResult[],
   ignoredIssuesCount: number,
+  cliReport: boolean,
 ): void {
   let totalIssuesCount = 0;
   const customRulesIdsFoundInIssues: { [customRuleId: string]: true } = {};
@@ -55,6 +56,7 @@ export function addIacAnalytics(
     computeCustomRulesBundleChecksum(),
   );
   analytics.add('iac-custom-rules-coverage-count', uniqueCustomRulesCount);
+  analytics.add('iac-cli-report', cliReport);
 }
 
 export const performanceAnalyticsObject: Record<

@@ -43,6 +43,7 @@ import {
 } from './oci-pull';
 import { isValidUrl } from './url-utils';
 import chalk from 'chalk';
+import { sendReport } from '../../../../lib/iac/cli-report';
 
 // this method executes the local processing engine and then formats the results to adapt with the CLI output.
 // this flow is the default GA flow for IAC scanning.
@@ -54,6 +55,7 @@ export async function test(
     let customRulesPath: string | undefined;
 
     const orgPublicId = options.org ?? config.org;
+    const isCliReport = options.report ?? false;
 
     const iacOrgSettings = await getIacOrgSettings(orgPublicId);
 
@@ -139,7 +141,11 @@ export async function test(
       // run their tests by squashing the error.
     }
 
-    addIacAnalytics(filteredIssues, ignoreCount);
+    if (isCliReport) {
+      sendReport(filteredIssues);
+    }
+
+    addIacAnalytics(filteredIssues, ignoreCount, isCliReport);
 
     // TODO: add support for proper typing of old TestResult interface.
     return {
