@@ -4,12 +4,16 @@ orbs:
   win: circleci/windows@2.4.1
   aws-cli: circleci/aws-cli@2.0.3
   gh: circleci/github-cli@1.0.4
+  node: circleci/node@4.8.0
 
 defaults: &defaults
   parameters:
     node_version:
       type: string
       default: '14.17.5'
+    npm_version:
+      type: string
+      default: '7.21.1'
     root_tap_tests:
       type: boolean
       default: false
@@ -25,54 +29,8 @@ defaults: &defaults
     package_tests:
       type: boolean
       default: false
-  working_directory: /mnt/ramdisk/snyk
 
 commands:
-  install_project_dependencies:
-    parameters:
-      node_version:
-        type: string
-      npm_version:
-        type: string
-        default: '7.21.1'
-      npm_cache_directory:
-        type: string
-        default: /mnt/ramdisk/.npm
-      npm_global_sudo:
-        type: boolean
-        default: true
-    steps:
-      - restore_cache:
-          name: Restoring npm cache
-          keys:
-            - npm-cache-v2-{{ arch }}-node<< parameters.node_version >>-npm<< parameters.npm_version >>-{{ checksum "package-lock.json" }}
-      - when:
-          condition:
-            not: << parameters.npm_global_sudo >>
-          steps:
-            run:
-              name: Installing npm
-              command: npm install -g npm@<< parameters.npm_version >>
-      - when:
-          condition: << parameters.npm_global_sudo >>
-          steps:
-            run:
-              name: Installing npm
-              command: sudo npm install -g npm@<< parameters.npm_version >>
-      - run:
-          name: Configuring npm
-          command: |
-            npm config set '//registry.npmjs.org/:_authToken' '${NPM_TOKEN}'
-            npm config set cache << parameters.npm_cache_directory >>
-            npm config set prefer-offline true
-      - run:
-          name: Installing project dependencies
-          command: npm ci
-      - save_cache:
-          name: Saving npm cache
-          key: npm-cache-v2-{{ arch }}-node<< parameters.node_version >>-npm<< parameters.npm_version >>-{{ checksum "package-lock.json" }}
-          paths:
-            - << parameters.npm_cache_directory >>
   build_project:
     steps:
       - run:
@@ -101,41 +59,21 @@ commands:
   install_sdks_linux:
     steps:
       - run:
+        name: Installing Python
+        command: |
+          sudo apt update
+          sudo apt install python-pip
+      - run:
           name: Installing SDKMAN
           command: |
             curl -s "https://get.sdkman.io?rcupdate=false" | bash
             echo -e '\nsource "/home/circleci/.sdkman/bin/sdkman-init.sh"' >> $BASH_ENV
             source $BASH_ENV
-      # - restore_cache:
-      #     name: Restoring SDKMAN cache
-      #     keys:
-      #       - sdkman-cache-v2-{{ arch }}-{{ checksum ".circleci/install-sdks-linux.sh" }}
       - run:
           name: Installing SDKs
           command: ./.circleci/install-sdks-linux.sh
-      # - save_cache:
-      #     name: Saving SDKMAN cache
-      #     key: sdkman-cache-v2-{{ arch }}-{{ checksum ".circleci/install-sdks-linux.sh" }}
-      #     paths:
-      #       - ~/.sdkman/archives
-  install_node_windows:
-    parameters:
-      node_version:
-        type: string
-    steps:
-      - run:
-          name: Removing pre-installed NodeJS
-          command: |
-            $current_node_version = node --version
-            nvm uninstall $current_node_version
-      - run:
-          name: Installing NodeJS
-          command: choco install nodejs --version=<< parameters.node_version >> --no-progress
   install_shellspec_dependencies:
     steps:
-      - run:
-          name: Installing test dependencies
-          command: sudo apt-get install jq python-pip
       - run:
           name: Installing ShellSpec
           command: |
@@ -153,18 +91,22 @@ commands:
     steps:
       - run:
           name: Installing release dependencies
-          command: sudo apt-get install -y osslsigncode
+          command: |
+            sudo apt update
+            sudo apt install osslsigncode
 
 jobs:
   build:
     <<: *defaults
     docker:
-      - image: circleci/node:<< parameters.node_version >>
+      - image: cimg/base:2021.11
     resource_class: large
     steps:
       - checkout
-      - install_project_dependencies:
-          node_version: << parameters.node_version >>
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - run:
           name: Linting project
           command: npm run lint
@@ -172,13 +114,15 @@ jobs:
   regression-test:
     <<: *defaults
     docker:
-      - image: circleci/node:<< parameters.node_version >>
+      - image: cimg/base:2021.11
     steps:
       - checkout
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - install_sdks_linux
       - install_shellspec_dependencies
-      - install_project_dependencies:
-          node_version: << parameters.node_version >>
       - attach_workspace:
           at: .
       - run:
@@ -210,13 +154,11 @@ jobs:
           name: Configuring Git
           command: git config --global core.autocrlf false
       - checkout
-      - install_node_windows:
-          node_version: << parameters.node_version >>
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - install_sdks_windows
-      - install_project_dependencies:
-          npm_cache_directory: ~\AppData\Local\npm-cache
-          node_version: << parameters.node_version >>
-          npm_global_sudo: false
       - attach_workspace:
           at: .
       - run:
@@ -277,18 +219,15 @@ jobs:
   test-linux:
     <<: *defaults
     docker:
-      - image: circleci/node:<< parameters.node_version >>
+      - image: cimg/base:2021.11
     resource_class: large
-    environment:
-      TEMP: /mnt/ramdisk/tmp
     steps:
-      - run:
-          name: Creating temporary directory
-          command: mkdir /mnt/ramdisk/tmp
       - checkout
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - install_sdks_linux
-      - install_project_dependencies:
-          node_version: << parameters.node_version >>
       - attach_workspace:
           at: .
       - run:
@@ -344,13 +283,15 @@ jobs:
   dev-release:
     <<: *defaults
     docker:
-      - image: circleci/node:<< parameters.node_version >>
+      - image: cimg/base:2021.11
     resource_class: large
     steps:
       - checkout
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - install_release_dependencies
-      - install_project_dependencies:
-          node_version: << parameters.node_version >>
       - attach_workspace:
           at: .
       - run:
@@ -377,21 +318,23 @@ jobs:
   prod-release:
     <<: *defaults
     docker:
-      - image: circleci/node:<< parameters.node_version >>
+      - image: cimg/base:2021.11
     resource_class: large
     steps:
       - checkout
       - run:
           name: Should I release?
           command: ./release-scripts/should-i-release.sh
+      - node/install:
+          node-version: << parameters.node_version >>
+          npm-version: << parameters.npm_version >>
+      - node/install-packages
       - gh/setup:
           token: GH_TOKEN
           version: 1.9.2
       - aws-cli/install:
           version: 2.2.32
       - install_release_dependencies
-      - install_project_dependencies:
-          node_version: << parameters.node_version >>
       - attach_workspace:
           at: .
       - run:
