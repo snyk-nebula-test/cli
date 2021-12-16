@@ -75,6 +75,7 @@ async function buildPolicyEngine(
 
     return new PolicyEngine(opaWasmInstance);
   } catch (err) {
+    console.log('-> err', err);
     throw new FailedToBuildPolicyEngine();
   }
 }
