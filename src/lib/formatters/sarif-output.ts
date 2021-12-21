@@ -38,7 +38,10 @@ export function getTool(testResult): sarif.Tool {
       if (pushedIds[vuln.id]) {
         return;
       }
-      const level = vuln.severity === 'high' ? 'error' : 'warning';
+      const level =
+        vuln.severity === 'high' || vuln.severity === 'critical'
+          ? 'error'
+          : 'warning';
       const cve = vuln['identifiers']['CVE'][0];
       pushedIds[vuln.id] = true;
       return {

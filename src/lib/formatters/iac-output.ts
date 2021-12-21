@@ -180,7 +180,9 @@ export function createSarifOutputForIac(
 function getIssueLevel(
   severity: SEVERITY | 'none',
 ): sarif.ReportingConfiguration.level {
-  return severity === SEVERITY.HIGH ? 'error' : 'warning';
+  return severity === SEVERITY.HIGH || severity === SEVERITY.CRITICAL
+    ? 'error'
+    : 'warning';
 }
 
 export function extractReportingDescriptor(
