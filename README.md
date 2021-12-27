@@ -26,7 +26,9 @@ Snyk CLI brings the functionality of [Snyk](https://snyk.io) into your developme
 
 ## Supported languages and tools
 
-Snyk supports many languages and tools, including Java, .NET, JavaScript, Python, Golang, PHP, C/C++, Ruby, Scala and more. See our [Language Support documentation](https://support.snyk.io/hc/en-us/articles/360020352437-Language-support-summary).
+See our [Language Support documentation](https://support.snyk.io/hc/en-us/articles/360020352437-Language-support-summary).
+
+Snyk supports many languages and tools, including Java, .NET, JavaScript, Python, Golang, PHP, C/C++, Ruby, Scala and more.
 
 CLI also supports [Docker scanning](https://support.snyk.io/hc/en-us/articles/360003946897-Snyk-Container-security-overview) and [Terraform, k8s and other Infrastructure as Code files scanning](https://support.snyk.io/hc/en-us/categories/360001342678-Infrastructure-as-code).
 
